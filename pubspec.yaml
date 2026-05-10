@@ -1,33 +1,22 @@
 name: snt_manager
-description: SNT Manager - Sultan Network Management
-publish_to: 'none'
+description: Sultan Net Manager App
 version: 1.0.0+1
 
 environment:
-  sdk: '^3.11.5'
+  sdk: ">=3.0.0 <4.0.0"
 
 dependencies:
   flutter:
     sdk: flutter
-  http: ^1.1.0
   webview_flutter: ^4.7.0
-  shared_preferences: ^2.2.3
-  connectivity_plus: ^6.0.3
-  cupertino_icons: ^1.0.8
-  flutter_launcher_icons: ^0.14.3
-
-dev_dependencies:
-  flutter_test:
-    sdk: flutter
+  http: ^1.1.0
+  shared_preferences: ^2.2.2
+  connectivity_plus: ^5.0.2
+  local_auth: ^2.2.0
 
 flutter:
   uses-material-design: true
-  assets:
-    - assets/images/
-
-flutter_launcher_icons:
-  android: true
-  ios: true
-  image_path: "assets/images/app_icon.png"
-  adaptive_icon_background: "#0F0F1A"
-  adaptive_icon_foreground: "assets/images/app_icon.png"
+  fonts:
+    - family: Cairo
+      fonts:
+        - asset: assets/fonts/Cairo-Regular.ttf
