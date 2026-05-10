@@ -17,12 +17,10 @@ allprojects {
     }
 }
 
-val newBuildDir: Directory = rootProject.layout.buildDirectory.dir("../../build").get()
-rootProject.layout.buildDirectory.set(newBuildDir)
+rootProject.layout.buildDirectory.set(rootProject.layout.projectDirectory.dir("build"))
 
 subprojects {
-    val newSubprojectBuildDir: Directory = rootProject.layout.buildDirectory.dir(project.name).get()
-    project.layout.buildDirectory.set(newSubprojectBuildDir)
+    project.layout.buildDirectory.set(rootProject.layout.buildDirectory.dir(project.name))
 }
 
 subprojects {
