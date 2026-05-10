@@ -1,5 +1,6 @@
-package com.example.snt_manager
+package com.sultan.stn_manager
 
 import io.flutter.embedding.android.FlutterActivity
 
-class MainActivity : FlutterActivity()
+class MainActivity: FlutterActivity() {
+}
