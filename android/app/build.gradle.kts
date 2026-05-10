@@ -2,19 +2,19 @@ plugins {
     id("com.android.application")
     id("kotlin-android")
     id("dev.flutter.flutter-gradle-plugin")
-    id("com.google.gms.google-services")
+    // حذفنا سطر google-services مؤقتاً لتجنب طلب البصمة الإجباري عند التشغيل
 }
 
 android {
     namespace = "com.sultan.stn_manager"
-    compileSdk = 34
+    compileSdk = 34 // عدنا للإصدار المستقر السابق
 
     defaultConfig {
         applicationId = "com.sultan.stn_manager"
         minSdk = 21
         targetSdk = 34
-        versionCode = 3
-        versionName = "1.0.2"
+        versionCode = 4
+        versionName = "1.0.3"
     }
 
     compileOptions {
@@ -23,11 +23,12 @@ android {
     }
 
     kotlinOptions {
-        jvmTarget = "1.8" // هذا السطر هو الحل النهائي لخطأ Inconsistent JVM
+        jvmTarget = "1.8"
     }
 
     buildTypes {
         getByName("release") {
+            // استخدام إعدادات الديباج للتوقيع لتجنب مشاكل البصمة في Codemagic
             signingConfig = signingConfigs.getByName("debug")
             isMinifyEnabled = false
             isShrinkResources = false
@@ -40,7 +41,6 @@ flutter {
 }
 
 dependencies {
-    implementation(platform("com.google.firebase:firebase-bom:32.7.0"))
-    implementation("com.google.firebase:firebase-auth")
-    implementation("com.google.firebase:firebase-firestore")
+    // تركنا المكتبات الأساسية فقط لضمان عمل الواجهات بدون انهيار
+    implementation("androidx.multidex:multidex:2.0.1")
 }
