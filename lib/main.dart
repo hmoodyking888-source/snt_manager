@@ -1,341 +1,143 @@
 import 'package:flutter/material.dart';
-import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:webview_flutter/webview_flutter.dart';
+import 'package:local_auth/local_auth.dart';
+import 'package:flutter_spinkit/flutter_spinkit.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(const STNManagerApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class STNManagerApp extends StatelessWidget {
+  const STNManagerApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'SNT Manager',
-      theme: ThemeData.dark().copyWith(
-        colorScheme: ColorScheme.dark(
-          primary: const Color(0xFFD4AF37),
-          surface: const Color(0xFF0F0F1A),
-        ),
-        scaffoldBackgroundColor: const Color(0xFF0F0F1A),
-      ),
+      title: 'STN_Manager',
       debugShowCheckedModeBanner: false,
-      home: const SplashScreen(),
+      theme: ThemeData(
+        brightness: Brightness.dark,
+        scaffoldBackgroundColor: const Color(0xFF000000),
+        primaryColor: const Color(0xFFD4AF37),
+        colorScheme: const ColorScheme.dark(
+          primary: Color(0xFFD4AF37),
+          secondary: Color(0xFFD4AF37),
+        ),
+        fontFamily: 'Cairo',
+      ),
+      home: const LoginPage(),
     );
   }
 }
 
-class SplashScreen extends StatefulWidget {
-  const SplashScreen({super.key});
+class LoginPage extends StatefulWidget {
+  const LoginPage({super.key});
 
   @override
-  State<SplashScreen> createState() => _SplashScreenState();
+  State<LoginPage> createState() => _LoginPageState();
 }
 
-class _SplashScreenState extends State<SplashScreen> {
-  @override
-  void initState() {
-    super.initState();
-    _checkSubscription();
-  }
+class _LoginPageState extends State<LoginPage> {
+  final LocalAuthentication auth = LocalAuthentication();
+  final TextEditingController phoneController = TextEditingController();
 
-  Future<void> _checkSubscription() async {
-    final prefs = await SharedPreferences.getInstance();
-    final phone = prefs.getString('phone');
-    final expiryDate = prefs.getString('expiryDate');
-    final mikrotikUrl = prefs.getString('mikrotikUrl');
-
-    await Future.delayed(const Duration(seconds: 2));
-
-    if (phone != null && expiryDate != null && mikrotikUrl != null) {
-      final expiry = DateTime.parse(expiryDate);
-      if (expiry.isAfter(DateTime.now())) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => WebViewScreen(url: mikrotikUrl),
-          ),
-        );
-        return;
-      }
+  // وظيفة البصمة
+  Future<void> _authenticate() async {
+    bool authenticated = false;
+    try {
+      authenticated = await auth.authenticate(
+        localizedReason: 'يرجى تأكيد البصمة للدخول إلى STN_Manager',
+        options: const AuthenticationOptions(biometricOnly: true),
+      );
+    } catch (e) {
+      print(e);
     }
-
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => const PhoneLoginScreen()),
-    );
+    if (authenticated) {
+      Navigator.push(context,
+          MaterialPageRoute(builder: (context) => const DashboardPage()));
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Center(
+      body: Container(
+        padding: const EdgeInsets.all(30),
+        decoration: const BoxDecoration(
+          gradient: RadialGradient(
+            colors: [Color(0xFF1A1A1B), Color(0xFF000000)],
+            radius: 1.5,
+          ),
+        ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Container(
-              width: 120,
-              height: 120,
-              decoration: BoxDecoration(
-                color: const Color(0xFFD4AF37),
-                borderRadius: BorderRadius.circular(25),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFFD4AF37).withValues(alpha: 0.4),
-                    blurRadius: 25,
-                    spreadRadius: 8,
-                  ),
-                ],
-              ),
-              child: const Icon(
-                Icons.shield,
-                size: 70,
-                color: Color(0xFF0F0F1A),
-              ),
-            ),
-            const SizedBox(height: 25),
+            // الشعار الذهبي
             const Text(
-              'SNT Manager',
+              "STN_Manager",
               style: TextStyle(
-                fontSize: 32,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFFD4AF37),
-                letterSpacing: 2,
-              ),
+                  fontSize: 40,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFFD4AF37)),
             ),
-            const Text(
-              'Sultan Network Tool',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey,
-                letterSpacing: 1,
-              ),
-            ),
-            const SizedBox(height: 30),
-            const CircularProgressIndicator(
-              color: Color(0xFFD4AF37),
-              strokeWidth: 3,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
+            const Text("إدارة شبكة سلطان نت",
+                style: TextStyle(color: Colors.white70)),
+            const SizedBox(height: 60),
 
-class PhoneLoginScreen extends StatefulWidget {
-  const PhoneLoginScreen({super.key});
-
-  @override
-  State<PhoneLoginScreen> createState() => _PhoneLoginScreenState();
-}
-
-class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
-  final TextEditingController _phoneController = TextEditingController();
-  final TextEditingController _mikrotikUrlController = TextEditingController();
-  final TextEditingController _mikrotikUserController = TextEditingController();
-  final TextEditingController _mikrotikPassController = TextEditingController();
-  bool _isLoading = false;
-
-  Future<void> _activateSubscription() async {
-    if (_phoneController.text.isEmpty || _mikrotikUrlController.text.isEmpty) {
-      _showMessage('يرجى ملء جميع الحقول');
-      return;
-    }
-
-    setState(() => _isLoading = true);
-
-    var connectivityResult = await Connectivity().checkConnectivity();
-    if (connectivityResult == ConnectivityResult.none) {
-      _showMessage('لا يوجد اتصال بالانترنت');
-      setState(() => _isLoading = false);
-      return;
-    }
-
-    final expiryDate = DateTime.now().add(const Duration(days: 30));
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('phone', _phoneController.text);
-    await prefs.setString('expiryDate', expiryDate.toIso8601String());
-    await prefs.setString('mikrotikUrl', _mikrotikUrlController.text);
-    await prefs.setString('mikrotikUser', _mikrotikUserController.text);
-    await prefs.setString('mikrotikPass', _mikrotikPassController.text);
-    await prefs.setString('role', 'admin');
-
-    setState(() => _isLoading = false);
-
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (context) => WebViewScreen(url: _mikrotikUrlController.text),
-      ),
-    );
-  }
-
-  void _showMessage(String msg) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(msg), backgroundColor: Colors.red));
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('SNT Manager - تفعيل الاشتراك'),
-        backgroundColor: const Color(0xFF0F0F1A),
-        foregroundColor: const Color(0xFFD4AF37),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: const Color(0xFF1A1A2E),
-                borderRadius: BorderRadius.circular(15),
-                border: Border.all(
-                  color: const Color(0xFFD4AF37).withValues(alpha: 0.3),
-                ),
-              ),
-              child: Column(
-                children: [
-                  const Icon(Icons.shield, size: 50, color: Color(0xFFD4AF37)),
-                  const SizedBox(height: 10),
-                  const Text(
-                    'SNT Manager',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFFD4AF37),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 30),
+            // حقل رقم الهاتف
             TextField(
-              controller: _phoneController,
-              decoration: InputDecoration(
-                labelText: 'رقم الهاتف',
-                prefixIcon: const Icon(Icons.phone, color: Color(0xFFD4AF37)),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Colors.grey),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(
-                    color: Color(0xFFD4AF37),
-                    width: 2,
-                  ),
-                ),
-              ),
+              controller: phoneController,
               keyboardType: TextInputType.phone,
-            ),
-            const SizedBox(height: 15),
-            TextField(
-              controller: _mikrotikUrlController,
               decoration: InputDecoration(
-                labelText: 'رابط Mikrotik',
-                hintText: 'http://192.168.88.1',
-                prefixIcon: const Icon(Icons.link, color: Color(0xFFD4AF37)),
+                hintText: "أدخل رقم الهاتف للتفعيل",
+                prefixIcon: const Icon(Icons.phone, color: Color(0xFFD4AF37)),
+                filled: true,
+                fillColor: Colors.white10,
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Colors.grey),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(
-                    color: Color(0xFFD4AF37),
-                    width: 2,
-                  ),
-                ),
+                    borderRadius: BorderRadius.circular(15),
+                    borderSide: BorderSide.none),
               ),
             ),
-            const SizedBox(height: 15),
-            TextField(
-              controller: _mikrotikUserController,
-              decoration: InputDecoration(
-                labelText: 'اسم مستخدم Mikrotik',
-                prefixIcon: const Icon(Icons.person, color: Color(0xFFD4AF37)),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+            const SizedBox(height: 20),
+
+            // زر الدخول بالبصمة
+            InkWell(
+              onTap: _authenticate,
+              child: Container(
+                padding: const EdgeInsets.all(15),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: const Color(0xFFD4AF37), width: 2),
                 ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Colors.grey),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(
-                    color: Color(0xFFD4AF37),
-                    width: 2,
-                  ),
-                ),
+                child: const Icon(Icons.fingerprint,
+                    size: 60, color: Color(0xFFD4AF37)),
               ),
             ),
-            const SizedBox(height: 15),
-            TextField(
-              controller: _mikrotikPassController,
-              decoration: InputDecoration(
-                labelText: 'كلمة مرور Mikrotik',
-                prefixIcon: const Icon(Icons.lock, color: Color(0xFFD4AF37)),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+            const SizedBox(height: 10),
+            const Text("اضغط لتأكيد البصمة",
+                style: TextStyle(color: Color(0xFFD4AF37))),
+
+            const SizedBox(height: 40),
+
+            // زر التفعيل/الدخول
+            SizedBox(
+              width: double.infinity,
+              height: 55,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFD4AF37),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(15)),
                 ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Colors.grey),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(
-                    color: Color(0xFFD4AF37),
-                    width: 2,
-                  ),
-                ),
+                onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => const DashboardPage())),
+                child: const Text("دخول للنظام",
+                    style: TextStyle(
+                        color: Colors.black,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold)),
               ),
-              obscureText: true,
-            ),
-            const SizedBox(height: 30),
-            _isLoading
-                ? const Center(
-                    child: CircularProgressIndicator(color: Color(0xFFD4AF37)),
-                  )
-                : ElevatedButton(
-                    onPressed: _activateSubscription,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFD4AF37),
-                      foregroundColor: Colors.black,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: const Text(
-                      'تفعيل الاشتراك',
-                      style: TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 1,
-                      ),
-                    ),
-                  ),
-            const SizedBox(height: 15),
-            const Text(
-              'الاشتراك التجريبي 30 يوم',
-              style: TextStyle(color: Colors.grey, fontSize: 12),
-              textAlign: TextAlign.center,
             ),
           ],
         ),
@@ -344,136 +146,52 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
   }
 }
 
-class WebViewScreen extends StatefulWidget {
-  final String url;
-  const WebViewScreen({super.key, required this.url});
-
-  @override
-  State<WebViewScreen> createState() => _WebViewScreenState();
-}
-
-class _WebViewScreenState extends State<WebViewScreen> {
-  late final WebViewController _controller;
-  bool _isLoading = true;
-  String _phone = '';
-  String _expiryDate = '';
-
-  @override
-  void initState() {
-    super.initState();
-    _loadUserData();
-    _controller = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setNavigationDelegate(
-        NavigationDelegate(
-          onPageFinished: (String url) => setState(() => _isLoading = false),
-        ),
-      )
-      ..loadRequest(Uri.parse(widget.url));
-  }
-
-  Future<void> _loadUserData() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _phone = prefs.getString('phone') ?? '';
-      _expiryDate = prefs.getString('expiryDate') ?? '';
-    });
-  }
-
-  Future<void> _logout() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.clear();
-    if (mounted) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const PhoneLoginScreen()),
-      );
-    }
-  }
-
-  void _showSubscriptionInfo() {
-    final expiry = DateTime.parse(_expiryDate);
-    final daysLeft = expiry.difference(DateTime.now()).inDays;
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A2E),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-        title: const Text(
-          'معلومات الاشتراك',
-          style: TextStyle(
-            color: Color(0xFFD4AF37),
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'رقم الهاتف: $_phone',
-              style: const TextStyle(color: Colors.white),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'الايام المتبقية: $daysLeft يوم',
-              style: const TextStyle(color: Colors.white),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'تاريخ الانتهاء: ${expiry.day}/${expiry.month}/${expiry.year}',
-              style: const TextStyle(color: Colors.white),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text(
-              'موافق',
-              style: TextStyle(
-                color: Color(0xFFD4AF37),
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+// صفحة لوحة التحكم (الرئيسية)
+class DashboardPage extends StatelessWidget {
+  const DashboardPage({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('SNT Manager'),
-        backgroundColor: const Color(0xFF0F0F1A),
-        foregroundColor: const Color(0xFFD4AF37),
-        actions: [
-          IconButton(
-            onPressed: _showSubscriptionInfo,
-            icon: const Icon(Icons.info_outline, color: Color(0xFFD4AF37)),
-          ),
-          IconButton(
-            onPressed: _logout,
-            icon: const Icon(Icons.logout, color: Color(0xFFD4AF37)),
-          ),
+        title: const Text("مدير الشبكة",
+            style: TextStyle(color: Color(0xFFD4AF37))),
+        centerTitle: true,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
+      body: GridView.count(
+        padding: const EdgeInsets.all(20),
+        crossAxisCount: 2,
+        mainAxisSpacing: 20,
+        crossAxisSpacing: 20,
+        children: [
+          _buildMenuCard(Icons.router, "برودباند"),
+          _buildMenuCard(Icons.wifi, "متصلون هوتسبوت"),
+          _buildMenuCard(Icons.sensors, "قطع البث"),
+          _buildMenuCard(Icons.print, "طباعة كروت"),
+          _buildMenuCard(Icons.analytics, "التقارير"),
+          _buildMenuCard(Icons.settings, "الإعدادات"),
         ],
       ),
-      body: Stack(
+    );
+  }
+
+  Widget _buildMenuCard(IconData icon, String title) {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF1A1A1B),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFD4AF37).withOpacity(0.3)),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          WebViewWidget(controller: _controller),
-          if (_isLoading)
-            Container(
-              color: const Color(0xFF0F0F1A),
-              child: const Center(
-                child: CircularProgressIndicator(
-                  color: Color(0xFFD4AF37),
-                  strokeWidth: 3,
-                ),
-              ),
-            ),
+          Icon(icon, size: 45, color: const Color(0xFFD4AF37)),
+          const SizedBox(height: 10),
+          Text(title,
+              style:
+                  const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
         ],
       ),
     );

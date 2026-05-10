@@ -1,15 +1,24 @@
-name: snt_manager
-description: Sultan Net Manager App
+name: stn_manager
+description: "A new Flutter project for Sultan Net."
+publish_to: 'none'
 version: 1.0.0+1
 
 environment:
-  sdk: ">=3.0.0 <4.0.0"
+  sdk: '>=3.2.3 <4.0.0'
 
 dependencies:
   flutter:
     sdk: flutter
-  webview_flutter: ^4.7.0
-  http: ^1.1.0
+  cupertino_icons: ^1.0.6
+  local_auth: ^2.1.6
+  flutter_spinkit: ^5.2.0
   shared_preferences: ^2.2.2
-  connectivity_plus: ^5.0.2
-  local_auth: ^2.2.0
+  http: ^1.1.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
